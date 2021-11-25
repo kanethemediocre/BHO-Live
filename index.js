@@ -125,7 +125,11 @@ var allusers = new Userlist([]);
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
-server.listen(3000,'3.19.246.243');//server ip goes here
+
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server listening in port ${PORT}`))
+
 io.on('connection', (socket) => { 
   var theid = socket.id;
   var newuser = new User("Cactus Fantastico",theid);//Setting name, not really used
