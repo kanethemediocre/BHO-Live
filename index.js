@@ -125,7 +125,7 @@ var allusers = new Userlist([]);
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
-server.listen(3000,'192.168.4.60');//server ip goes here
+server.listen(3000,'3.19.246.243');//server ip goes here
 io.on('connection', (socket) => { 
   var theid = socket.id;
   var newuser = new User("Cactus Fantastico",theid);//Setting name, not really used
