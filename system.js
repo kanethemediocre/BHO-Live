@@ -1,5 +1,96 @@
 var Bling = require('./bling.js');
+var Umo = require('./umo.js');
+
+
+//stuff from graphics.js and texthandling
+function drawpolarpoly(px,py,thetalist, radiuslist, size, color, dir){
+	//requires, does not verify, that thetalist.length==radiuslist.length, thetalist.length>2, color be valid
+		var fx = px + Math.cos(dir+thetalist[0])*size*radiuslist[0];
+		var fy = py + Math.sin(dir+thetalist[0])*size*radiuslist[0];
+		context.fillStyle = color; //Now actual drawing of the things
+		context.beginPath();
+		context.moveTo(fx, fy); 
+		i = thetalist.length;
+		while(i>0){
+			i=i-1;
+			var ix = px + Math.cos(dir+thetalist[i])*size*radiuslist[i];
+			var iy = py + Math.sin(dir+thetalist[i])*size*radiuslist[i];
+			context.lineTo(ix, iy);
+		}
+		context.fill();	
+	}
+function randpolarpoly(sides, minradius){//Polygons will be symmetrical, vertices evenly spaced
+	spacing = 2*Math.PI/sides; //Needs at least 3.  Or 4, seems not to work right with odd numbers
+	firstradius = Math.random()*(1-minradius) + minradius; //Minimum radius to make things less spiky
+	vertices = [[0],[firstradius]];//Array of arrays, first element is list of angles, 2nd element is list of radii.
+	i = 0;
+	while (i<sides/2){ //First half is random
+		i=i+1;
+		vertices[0].push(spacing*i);
+		vertices[1].push(Math.random()*(1-minradius) + minradius);
+		}
+	while (i<sides){ //2nd half matches first
+		i=i+1;
+		vertices[0].push(spacing*i);
+		vertices[1].push(vertices[1][sides-i]);
+		}
+	return vertices; 
+	}
+function normalizepoly(vertices){//Make the largest radii equal to 1, scale the others proportionally.
+	var maxr = 0;
+	i = vertices[1].length;
+	while (i>0){//finds the largest radii
+		i=i-1;
+		if (vertices[1][i]>maxr){maxr = vertices[1][i];}
+		}
+	i = vertices[1].length;
+	while (i>0){//Scales radii to 1
+		i=i-1;
+		vertices[1][i]=vertices[1][i]/maxr;
+		}
+	}
+function randcolor(){
+	var thecolors = ["hotpink","deeppink","fuchsia","darkviolet","purple","indigo","salmon","crimson","red","darkred","orange","orangered","gold","yellow","khaki","lime","mediumspringgreen","seagreen","green","darkgreen","olive","teal","aqua","steelblue","lightskyblue","deepskyblue","blue","navy","tan","chocolate","sienna","maroon","silver","darkgrey","dimgrey"];
+	return thecolors[Math.floor(Math.random()*thecolors.length)];
+	}
+
+
+	function randvowel(){
+		var vowels = "aeyuio";
+		var vindex = Math.floor(Math.random()*vowels.length);
+		return vowels[vindex];
+		}
+	function randconsonant(){
+		var consonants = "zxcvbnmsdfghjklqwrtyp";
+		var cindex = Math.floor(Math.random()*consonants.length);
+		return consonants[cindex];
+		}
+	function randname(namelength){//Creates a random name of length namelength, with no more than 2 vowels or consonants in a row
+		var lastchartype = Math.floor(Math.random()*2); //0 for consonant, 1 for vowel;
+		var lastchartype2 = Math.floor(Math.random()*2); //2nd to last....
+		var thischartype = Math.floor(Math.random()*2); //0 for consonant, 1 for vowel;
+		var thename = ""; //Start with an empty name
+		if (lastchartype2 == 0){thename=thename+randconsonant();}else{thename=thename+randvowel();}
+		if (lastchartype == 0){thename=thename+randconsonant();}else{thename=thename+randvowel();}
+		var i = namelength;
+		while (i>2){
+			i=i-1;
+			if (lastchartype == lastchartype2){ //if last two characters are same type,
+				if (lastchartype == 0){thischartype = 1;}else{thischartype = 0;} //make other type
+				}else {thischartype = Math.floor(Math.random()*2);}//otherwise pick randomly
+			if (thischartype == 0){thename=thename+randconsonant();}else{thename=thename+randvowel();}
+			lastchartype2 = lastchartype; //Keep track of last two characters
+			lastchartype = thischartype; //so we can not have 3 vowels or 3 consonants sequentially
+			}
+		return thename;
+		}
+	var testname = randname(8);	
+
+
+
+
 ////////////////////////////Begin system class///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 module.exports = class System{
 	constructor(index, name, x, y){
 		this.index = index; //integer identifying system 
@@ -596,10 +687,10 @@ module.exports = class System{
 				this.ships[botindex].shieldregen = this.ships[botindex].shieldregen+0.25;
 				}			
 			if (bonus==3){ //extra bomb damage
-				this.botbombs[botindex-1].hurt = this.botbombs[botindex-1].hurt+8;
+				this.botbombs[botindex].hurt = this.botbombs[botindex].hurt+8;
 				}						
 			if (bonus==4){ //extra bomb blast
-				this.botbombs[botindex-1].boombuff = this.botbombs[botindex-1].boombuff+0.25;//I think botbombs needs -1 because it does not include a bomb for ships[0] (player)
+				this.botbombs[botindex].boombuff = this.botbombs[botindex].boombuff+0.25;//I think botbombs needs -1 because it does not include a bomb for ships[0] (player)
 				}			
 			this.ships[botindex].level = this.ships[botindex].level+1;
 			}

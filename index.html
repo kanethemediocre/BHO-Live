@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8"> 
-    <title>Bling Hustle Online v3</title>
+    <title>Bling Hustle Online v15</title>
     <style>
       body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 
@@ -77,10 +77,11 @@ class Umo { //Universal Moving Object (taken from umo space git)
 		this.vy = 0;
 		this.vd = 0; //0 rotation 
 		this.m = this.s*this.s*this.s; //So far only used by gravitate function.
-		this.hp = 100 ; //This is used for destructible entities to track health
-		this.maxhp = 100;
-		this.shield = 50; //for ships, mostly
-		this.maxshield = 50; 
+		this.hp = 200 ; //This is used for destructible entities to track health
+		this.maxhp = 200;
+		this.shield = 100; //for ships, mostly
+		this.shieldregen = 0.5;
+		this.maxshield = 100; 
 		this.polyradius = [1,1,1]; //Default values are the triangle originally
 		this.polytheta = [0,0.8*Math.PI,1.2*Math.PI];	//used for ship drawing
 		this.level = 1; //Describes difficulty of a given ship
@@ -128,11 +129,11 @@ class Umo { //Universal Moving Object (taken from umo space git)
 		var color1 = this.c;
 		var color2 = this.c2;
 		var shieldcolor = "blue";
-		if (this.damagestate>0){
-			color1 = randcolor();
-			color2 = randcolor();
-			}
-		if (this.shielddamagestate>0){shieldcolor = randcolor(); }
+		//if (this.damagestate>0){
+		//	color1 = randcolor();
+		//	color2 = randcolor();
+		//	}
+		//if (this.shielddamagestate>0){shieldcolor = randcolor(); }
 		drawpolarpoly(x,y,this.polytheta, this.polyradius, this.s, color1, this.d);//ship polyon
 		drawpolarpoly(x,y,this.polytheta, this.polyradius, this.s-8, color2, this.d);//ship polyon
 		var shieldthick = Math.floor(this.shield*4/this.maxshield); //shield
@@ -451,7 +452,15 @@ function drawmap(mplanets, mstations,scale,xx,yy, px, py, radar, mships){//scale
   var player10 = new Umo(0,0,32,"lime");
   var player11 = new Umo(0,0,32,"teal");
   var player12 = new Umo(0,0,32,"indigo");
-  var players = [player1,player2,player3,player4,player5,player6,player7,player8,player9,player10,player11,player12];	
+  var players = [player1,player2,player3,player4,player5,player6,player7,player8,player9,player10,player11,player12];
+  var i=0;
+  while(i<players.length){
+	players[i].hp = 400;
+	players[i].maxhp = 400;
+	players[i].shield = 200;
+	players[i].maxshield = 200;
+	i++;
+  }	
   var playerbomb1 = new Umo(0,0,8,"red");
   var playerbomb2 = new Umo(0,0,8,"orange");
   var playerbomb3 = new Umo(0,0,8,"yellow");
@@ -468,7 +477,9 @@ function drawmap(mplanets, mstations,scale,xx,yy, px, py, radar, mships){//scale
   var updatescorearray = [];
   var updateplanetsarray = [];
   var updateplayersarray = [];
-  var updateplayerbombsarray = [];	
+  var updateplayerbombsarray = [];
+  var updatenmeshipsarray = [];	
+  var updatebotbombsarray = [];
   var updateblingarray = [];
   var mycolor = "grey";
   var myi = 0;
@@ -507,6 +518,9 @@ function drawmap(mplanets, mstations,scale,xx,yy, px, py, radar, mships){//scale
 		players[i].vx = updateplayersarray[i][2];
 		players[i].vy = updateplayersarray[i][3];
 		players[i].d = updateplayersarray[i][4];
+		players[i].hp = updateplayersarray[i][6];
+		players[i].shield = updateplayersarray[i][7];
+		//console.log(updateplayersarray[i][6]+"  "+updateplayersarray[i][7])
 		i++;
 	}
     updateplayerbombsarray = freshxyc[2];
@@ -520,6 +534,8 @@ function drawmap(mplanets, mstations,scale,xx,yy, px, py, radar, mships){//scale
 		i++;
 	}
     updateblingarray = freshxyc[3];
+	updatenmeshipsarray = freshxyc[4];
+	updatebotbombsarray = freshxyc[5];
     updatetime = time;
   });
 const FPS = 30;
@@ -572,7 +588,27 @@ canvas = document.getElementById("gameCanvas");      // load canvas
 		thatbling.draw(updateplayersarray[myi][0],updateplayersarray[myi][1]) 
 		i++;
 	}
-
+	var i=0;
+	while (i<updatenmeshipsarray.length){
+		var thatship = new Umo(updatenmeshipsarray[i][0],updatenmeshipsarray[i][1],32,"magenta");
+		thatship.vx = updatenmeshipsarray[i][2];
+		thatship.vy = updatenmeshipsarray[i][3];
+		thatship.d = updatenmeshipsarray[i][4];
+		thatship.hp = updatenmeshipsarray[i][5];
+		thatship.shield = updatenmeshipsarray[i][6];
+		thatship.c2 = "teal";
+		thatship.drawship(updateplayersarray[myi][0],updateplayersarray[myi][1]) 
+		i++;
+	}
+	var i=0;
+	//console.log(updatebotbombsarray.length);
+	while (i<updatebotbombsarray.length){
+		var thatbomb = new Umo(updatebotbombsarray[i][0],updatebotbombsarray[i][1],updatebotbombsarray[i][4],"magenta");
+		thatbomb.vx = updatebotbombsarray[i][2];
+		thatbomb.vy = updatebotbombsarray[i][3];
+		thatbomb.drawbomb(updateplayersarray[myi][0],updateplayersarray[myi][1]); 
+		i++;
+	}
 
 	players[myi].d=moused;
 	socket.emit('mouseinput', [moused,mousestate]);

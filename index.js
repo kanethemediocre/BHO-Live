@@ -5,6 +5,8 @@ var loadhomesystem = require('./homesystem.js');
 var systems = [0,new System(1,"Sool",0,0)]//constructor(index, name, x, y){
 systems[1].planets = loadhomesystem();
 systems[1].addrandombling(100);
+systems[1].enemypopulate(3,0,0);
+//enemypopulate(num,minlevel,maxlevel){ 
 var sys = 1;
 var liteplanets = [];
 var i=0;
@@ -39,7 +41,13 @@ class User{
     this.name = name;
     this.id = id;
     this.s = new Umo(-100,-100,32,"tan");//constructor(xxx, yyy, sss, ccc) {
+    this.s.parentid = 3; //respawn in earf orbit
+    this.s.hp = 400;
+    this.s.maxhp = 400;
+    this.s.shield = 200;
+    this.s.maxshield = 200;
     this.bs = new Umo(-100,-100,8,"magenta");// this.s is player sprite, this.bs is bomb sprite
+    this.bs.hurt = 16;
     //this.es = new Sprite(-100,-100,32,"orange");// this.es is the bomb explosion
     this.input = -1;
     this.mousestate = 0;
@@ -125,11 +133,8 @@ var allusers = new Userlist([]);
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
-
-
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server listening in port ${PORT}`))
-
+server.listen(PORT,'192.168.4.60');//server ip goes here
 io.on('connection', (socket) => { 
   var theid = socket.id;
   var newuser = new User("Cactus Fantastico",theid);//Setting name, not really used
@@ -168,6 +173,12 @@ function update() { //game loop
   var updateplayersarray = [];
   var updateplayerbombsarray = [];
   var updateblingarray = [];
+  var updatenmeshipsarray = [];
+  var updatebotbombsarray = [];
+
+  
+
+
   //Planet update and array exporting/////////////////////////////////////////////////////////////////////
   updateplanetsarray.push([systems[sys].planets[0].x,systems[sys].planets[0].y,systems[sys].planets[0].vx,systems[sys].planets[0].vy]);//add sun to array
   var i=1;//for all not-sun planets
@@ -189,9 +200,56 @@ function update() { //game loop
       systems[sys].planets[i].circlecollide(systems[sys].bling[j]);//players bounce off planets
       j++;
     }
+    var j=0;
+    while (j<systems[sys].ships.length){ //all npc ships
+      systems[sys].planets[i].gravitate(systems[sys].ships[j]);//player bombs get pulled by all planets
+      systems[sys].planets[i].circlecollide(systems[sys].ships[j]);//players bounce off planets
+      j++;
+    }
     i++;
   }
+//update stuff for nme ships;
+  var i=0;
+  while(i<systems[sys].ships.length){
+    var j=i;//Prevents redundant checks with ship on ship stuff
+    while(j<systems[sys].ships.length){//Intership collision
+      systems[sys].ships[i].circlecollide2(systems[sys].ships[j]);
+      systems[sys].botbombs[i].bombcollide(systems[sys].ships[j]);
+      systems[sys].botbombs[j].bombcollide(systems[sys].ships[i]);
+      j++;
+    }
+    var j=0; //
+    var closestj = 0;
+    var closestdistance = 10000;
+    while (j<allusers.users.length){
+      systems[sys].botbombs[i].bombcollide(allusers.users[j].s);
+      allusers.users[j].bs.bombcollide(systems[sys].ships[i]);
+      var nextdistance = allusers.users[j].s.distance(systems[sys].ships[i]);
+      if (nextdistance<closestdistance){
+        closestdistance = nextdistance;
+        closestj = j;
+        }  
+      j++;
+      }
 
+    if (closestdistance<1200){
+      systems[sys].ships[i].d = systems[sys].ships[i].directionof(allusers.users[closestj].s);
+      if ((Math.random()>0.90) && (systems[sys].botbombs[i].timer < 1)){  //Bots fire occasionally, if bomb isn't in use
+        systems[sys].ships[i].launchbomb(systems[sys].botbombs[i],8,64);					
+        }
+      }
+    //systems[sys].ships[i].fasttrack(allusers.users[closestj].s);//track closest player
+    systems[sys].ships[i].updateship(systems[sys].planets);
+    systems[sys].botbombs[i].update1();
+    systems[sys].botbombs[i].updatebomb();//This works because the lists are kept in sync
+    var j=0;
+    while(j<systems[sys].planets.length){
+      systems[sys].planets[j].gravitate(systems[sys].botbombs[i]);//bombs get pulled by all planets
+      systems[sys].planets[j].circlecollide(systems[sys].botbombs[i]);//bombs bounce off planets
+      j++;
+    }
+    i++;
+    }
  //Big allusers loop that does gravity, collisions, player actions, players and bomb updates starts here///////////////////////////////////////
  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   var i=0;
@@ -212,6 +270,11 @@ function update() { //game loop
       j++;
     }
     var j=0;
+    while (j<systems[sys].ships.length){//Player-Enemy collisions
+      allusers.users[i].s.circlecollide2(systems[sys].ships[j]);//players bounce off enemies
+      j++;
+    }
+    var j=0;
     while(j<systems[sys].bling.length){
       if (allusers.users[i].s.collide(systems[sys].bling[j])){
         allusers.users[i].score++;
@@ -220,16 +283,17 @@ function update() { //game loop
       j++;
     }
     if (allusers.users[i].mousestate==1){//On click, launch bomb
-      allusers.users[i].s.launchbomb(allusers.users[i].bs,4,128);//launchbomb(thebomb, mag, time){ 
+      allusers.users[i].s.launchbomb(allusers.users[i].bs,12,128);//launchbomb(thebomb, mag, time){ 
       allusers.users[i].bs.push(2,allusers.users[i].s.d);//player thrusters
     }  
     if (allusers.users[i].mousestate==2){//on right click, thrust
       allusers.users[i].s.push(2,allusers.users[i].s.d);//player thrusters
     }
-    allusers.users[i].s.update1();//all players get updated
+    //allusers.users[i].s.update1();//all players get updated
+    allusers.users[i].s.updateship(systems[sys].planets);//all players get updated
     allusers.users[i].bs.update1();//all players get updated
-    //allusers.users[i].bs.updatebomb();//
-    updateplayersarray.push([Math.floor(allusers.users[i].s.x),Math.floor(allusers.users[i].s.y),Math.floor(100*allusers.users[i].s.vx)/100,Math.floor(100*allusers.users[i].s.vy)/100,allusers.users[i].s.d,allusers.users[i].score]);
+    allusers.users[i].bs.updatebomb();//
+    updateplayersarray.push([Math.floor(allusers.users[i].s.x),Math.floor(allusers.users[i].s.y),Math.floor(100*allusers.users[i].s.vx)/100,Math.floor(100*allusers.users[i].s.vy)/100,allusers.users[i].s.d,allusers.users[i].score,allusers.users[i].s.hp,allusers.users[i].s.shield]);
     updateplayerbombsarray.push([Math.floor(allusers.users[i].bs.x),Math.floor(allusers.users[i].bs.y),Math.floor(100*allusers.users[i].bs.vx)/100,Math.floor(100*allusers.users[i].bs.vy)/100,allusers.users[i].bs.s]);
     i++;
   }
@@ -261,7 +325,44 @@ while(i<systems[sys].bling.length){
   }
   i++;
 }
+
+
+//For now, ships array is NOT personalized, but filtered by all players proximities.
+var i=0;
+while(i<systems[sys].ships.length){
+  var included = false;
+  var j=0;
+  while(j<allusers.users.length){
+    if (allusers.users[j].s.distance(systems[sys].ships[i])<3000){
+      included = true;
+    }
+    j++;
+  }
+  if (included){
+    updatenmeshipsarray.push([Math.floor(systems[sys].ships[i].x),Math.floor(systems[sys].ships[i].y),Math.floor(100*systems[sys].ships[i].vx)/100,Math.floor(100*systems[sys].ships[i].vy)/100,systems[sys].ships[i].d,systems[sys].ships[i].hp,systems[sys].ships[i].shield]);
+  }
+  i++;
+}
+
+//For now, ships array is NOT personalized, but filtered by all players proximities.
+var i=0;
+while(i<systems[sys].botbombs.length){
+  var included = false;
+  var j=0;
+  while(j<allusers.users.length){
+    if (allusers.users[j].s.distance(systems[sys].botbombs[i])<3000){
+      included = true;
+    }
+    j++;
+  }
+  if (included){
+    updatebotbombsarray.push([Math.floor(systems[sys].botbombs[i].x),Math.floor(systems[sys].botbombs[i].y),Math.floor(100*systems[sys].botbombs[i].vx)/100,Math.floor(100*systems[sys].botbombs[i].vy)/100,systems[sys].botbombs[i].s]);
+  }
+  i++;
+}
+
+
 console.log(updateblingarray.length+" "+systems[sys].bling.length);
-io.emit('gameupdate', [updateplanetsarray,updateplayersarray,updateplayerbombsarray,updateblingarray]);
+io.emit('gameupdate', [updateplanetsarray,updateplayersarray,updateplayerbombsarray,updateblingarray,updatenmeshipsarray,updatebotbombsarray]);
   time++;
 }

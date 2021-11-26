@@ -13,14 +13,15 @@ module.exports = class Umo { //Universal Moving Object (taken from umo space git
 		this.vd = 0; //0 rotation 
 		this.m = this.s*this.s*this.s; //So far only used by gravitate function.
 		this.thrust = 0;
+		this.thruster = 100; //new, not yet used, toreplace global
 		this.deadtime = 0;   //0 is alive.  N is dead for N more frames.
-		this.hp = 100 ; //This is used for destructible entities to track health
-		this.maxhp = 100;
+		this.hp = 200 ; //This is used for destructible entities to track health
+		this.maxhp = 200;
 		this.timer = 0; //Used for bombs.  Could maybe be consolidated with deadtime.
-		this.hurt = 16 ; //used for bombs and planets.  Determines damage.
+		this.hurt = 8 ; //used for bombs and planets.  Determines damage.
 		this.boombuff = 0.5 ; // used for bombs.  Multiplies blast radius
-		this.shield = 50; //for ships, mostly
-		this.maxshield = 50; 
+		this.shield = 100; //for ships, mostly
+		this.maxshield = 100; 
 		this.shieldregen = 1;
 		this.polyradius = [1,1,1]; //Default values are the triangle originally
 		this.polytheta = [0,0.8*Math.PI,1.2*Math.PI];	//used for ship drawing
@@ -182,6 +183,7 @@ module.exports = class Umo { //Universal Moving Object (taken from umo space git
 				}
 			}
 		}
+	
 	gravitate(pulled){ //For planets.
 		var dx = this.x - pulled.x; 
 		var dy = this.y - pulled.y;
@@ -439,23 +441,23 @@ module.exports = class Umo { //Universal Moving Object (taken from umo space git
 		context.fillText(Math.floor(this.distance(targetship)),compassx-16,compassy + compasssize);
 		}// end compass stuff
 	updateship(theplanets){//Unfortunately I need access to the list of planets to handle ship respawning.
-		if ((thruster > 0)&&(this.thrust > 0)){ //skips these calculations if no thrust
+		if ((this.thruster > 0)&&(this.thrust > 0)){ //skips these calculations if no thrust
 			this.vx = this.vx + this.thrust*Math.cos(this.d);
 			this.vy = this.vy + this.thrust*Math.sin(this.d);
 			if (this.ai == "player"){//quick hack to prevent other ships movements affecting player thruster energy and stuff.
-				thruster = thruster - 24;//thruster is a global variable, shame.
+				this.thruster = this.thruster - 24;//thruster is a global variable, shame.
 				var td = 48;
 				var tr = 24;
 				var x = Math.cos(this.d+Math.PI)*td + canvas.width/2;
 				var y = Math.sin(this.d+Math.PI)*td + canvas.height/2;
-				context.beginPath();
-				context.strokeStyle = "orange";
-				context.arc(x, y, tr, 0, 2 * Math.PI, false);
-				context.fillStyle = "orange";
-				context.fill();
-				context.lineWidth = 2;
-				context.stroke();	
-				enginesound1.play();
+				//context.beginPath();
+				//context.strokeStyle = "orange";
+				//context.arc(x, y, tr, 0, 2 * Math.PI, false);
+				//context.fillStyle = "orange";
+				//context.fill();
+				//context.lineWidth = 2;
+				//context.stroke();	
+		//		enginesound1.play();
 				}
 			}
 		if (this.damagestate>0){this.damagestate = this.damagestate-1;}
@@ -465,6 +467,7 @@ module.exports = class Umo { //Universal Moving Object (taken from umo space git
 		this.y = this.y + this.vy;
 		this.d = this.d + this.vd;
 		if ((this.hp < 0) && (this.hp !==-1000)){ this.killship(1800); }
+		else if ((this.distance(theplanets[this.parentid])>10000)&&(this.ai=="enemy")&&(this.hp!==-1000)){ this.killship(300); }
 		this.deadtime = this.deadtime - 1;
 		if (this.thruster > 100){ this.thruster = 100; }
 		this.energy = this.energy + 1;
@@ -474,7 +477,7 @@ module.exports = class Umo { //Universal Moving Object (taken from umo space git
 		if ((this.deadtime < 0) && (this.hp == -1000)){
 			this.respawn(theplanets[this.parentid]); //maybe change how I handle this
 			if (this.name == "Cactus Fantastico"){//default/player umo name
-				respawn1.play();
+				//respawn1.play();
 				}
 			}
 		}
